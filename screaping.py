@@ -38,68 +38,97 @@ def crystal_system_from_sg(sg_number):
             return name
     return None
 
-def fetch_mp_materials(api_key, output_path=config.RAW_MP_PATH):
-    """Fetch inorganic materials dari Materials Project."""
+def _parse_mp_doc(doc):
+    """Ubah satu SummaryDoc MP -> dict ringkas, atau None bila non-solid."""
+    energy_per_atom = (doc.uncorrected_energy_per_atom
+                       if doc.uncorrected_energy_per_atom is not None
+                       else doc.energy_per_atom)
+    # Filter non-solid (paper Bagian 2.1): MP summary tidak menandai
+    # solid/non-solid eksplisit, jadi pakai proxy volume valid + energi ada.
+    if energy_per_atom is None or doc.volume is None or doc.volume <= 0:
+        return None
+    comp_dict = {str(el): int(round(amt))
+                 for el, amt in doc.composition.get_el_amt_dict().items()}
+    return {
+        "id": str(doc.material_id),
+        "formula": doc.formula_pretty,
+        "composition": comp_dict,
+        "nsites": int(doc.nsites),
+        "volume": float(doc.volume),
+        "energy_cell": float(energy_per_atom * doc.nsites),
+        "space_group": doc.symmetry.number if doc.symmetry else None,
+        "crystal_system": (str(doc.symmetry.crystal_system)
+                           if doc.symmetry else None),
+    }
 
-    materials = []
+
+def fetch_mp_materials(api_key, output_path=config.RAW_MP_PATH,
+                       batch_size=2000, limit=None):
+    """Fetch inorganic materials dari Materials Project dgn checkpoint+resume.
+
+    Strategi tahan-putus:
+      1. Ambil daftar `material_id` saja (1 field ringan -> cepat).
+      2. Tarik detail per-batch (`batch_size` id sekali query); simpan
+         checkpoint `<output>.partial` SETIAP batch. Kalau proses terputus,
+         jalankan lagi -> otomatis lanjut dari id yang belum terambil.
+
+    Args:
+        batch_size: jumlah material_id per query detail.
+        limit:      batasi total material (mode test cepat). None = semua.
+    """
+    fields = ["material_id", "formula_pretty", "composition", "nsites",
+              "volume", "energy_per_atom", "uncorrected_energy_per_atom",
+              "symmetry"]
+
+    os.makedirs(config.DATA_DIR, exist_ok=True)
+    ckpt_path = output_path + ".partial"
+
+    # Resume dari checkpoint bila ada.
+    materials, done_ids = [], set()
+    if os.path.exists(ckpt_path):
+        with open(ckpt_path) as f:
+            materials = json.load(f)
+        done_ids = {m["id"] for m in materials}
+        print(f"Resume: {len(done_ids):,} material sudah ada di checkpoint")
 
     with MPRester(api_key) as mpr:
-        print(f"\nConnecting to Materials Project...")
-        print(f"Fetching materials...")
+        print("\nMengambil daftar material_id (ringan)...")
+        all_ids = [str(d.material_id)
+                   for d in mpr.materials.summary.search(fields=["material_id"])]
+        if limit:
+            all_ids = all_ids[:limit]
+        todo = [i for i in all_ids if i not in done_ids]
+        print(f"Total {len(all_ids):,} material, sisa {len(todo):,} diambil")
 
-        fetch_materials = mpr.materials.summary.search(
-            fields=[
-                "material_id",
-                "formula_pretty",
-                "composition",
-                "nsites",
-                "volume",
-                "energy_per_atom",
-                "uncorrected_energy_per_atom",
-                "symmetry",
-            ]
-        )
-
-        for i, doc in enumerate(fetch_materials):
-            try:
-                comp_dict = {str(el): int(round(amt)) for el, amt in doc.composition.get_el_amt_dict().items()}
-                sg = doc.symmetry.number if doc.symmetry else None
-                cs = str(doc.symmetry.crystal_system) if doc.symmetry else None
-
-                energy_per_atom = (doc.uncorrected_energy_per_atom
-                                   if doc.uncorrected_energy_per_atom is not None
-                                   else doc.energy_per_atom)
-
-                # Filter non-solid (paper Bagian 2.1): MP summary tidak
-                # menandai solid/non-solid secara eksplisit, jadi kita pakai
-                # proxy volume valid (> 0) + energi tersedia.
-                if energy_per_atom is None or doc.volume is None or doc.volume <= 0:
+        t0 = time.time()
+        for start in range(0, len(todo), batch_size):
+            batch = todo[start:start + batch_size]
+            docs = mpr.materials.summary.search(material_ids=batch, fields=fields)
+            for doc in docs:
+                try:
+                    rec = _parse_mp_doc(doc)
+                    if rec is not None:
+                        materials.append(rec)
+                except Exception:
                     continue
 
-                materials.append({
-                    "id": str(doc.material_id),
-                    "formula": doc.formula_pretty,
-                    "composition": comp_dict,
-                    "nsites": int(doc.nsites),
-                    "volume": float(doc.volume),
-                    "energy_cell": float(energy_per_atom * doc.nsites),
-                    "space_group": sg,
-                    "crystal_system": cs,
-                })
+            # Checkpoint tiap batch -> aman bila putus.
+            with open(ckpt_path, "w") as f:
+                json.dump(materials, f)
 
-                if (i+1) % 1000 == 0:
-                    print(f"  Progress: {i+1} materials fetched")
+            done = start + len(batch)
+            rate = done / max(time.time() - t0, 1e-9)
+            eta = (len(todo) - done) / max(rate, 1e-9)
+            print(f"  {done:,}/{len(todo):,} | {len(materials):,} solid | "
+                  f"{rate:.0f}/s | ETA {eta/60:.1f} min")
 
-            except Exception as e:
-                continue
+    with open(output_path, "w") as f:
+        json.dump(materials, f, indent=2)
+    if os.path.exists(ckpt_path):
+        os.remove(ckpt_path)
 
-        os.makedirs(config.DATA_DIR, exist_ok=True)
-        with open(output_path, "w") as f:
-            json.dump(materials, f, indent=2)
-
-        print(f"\nFetched {len(materials):,} materials")
-        print(f"Saved to: {output_path}")
-
+    print(f"\nFetched {len(materials):,} materials")
+    print(f"Saved to: {output_path}")
     return materials
 
 def _query_aflux(directive: str, n_per_page: int, page: int, retries: int = 3):
