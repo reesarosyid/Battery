@@ -38,96 +38,102 @@ def crystal_system_from_sg(sg_number):
             return name
     return None
 
-def _parse_mp_doc(doc):
-    """Ubah satu SummaryDoc MP -> dict ringkas, atau None bila non-solid."""
-    energy_per_atom = (doc.uncorrected_energy_per_atom
-                       if doc.uncorrected_energy_per_atom is not None
-                       else doc.energy_per_atom)
-    # Filter non-solid (paper Bagian 2.1): MP summary tidak menandai
-    # solid/non-solid eksplisit, jadi pakai proxy volume valid + energi ada.
-    if energy_per_atom is None or doc.volume is None or doc.volume <= 0:
+def _mp_comp_to_dict(val):
+    """Komposisi dari kolom Arrow -> {elemen: jumlah_int}. Toleran tipe."""
+    if val is None:
         return None
-    comp_dict = {str(el): int(round(amt))
-                 for el, amt in doc.composition.get_el_amt_dict().items()}
-    return {
-        "id": str(doc.material_id),
-        "formula": doc.formula_pretty,
-        "composition": comp_dict,
-        "nsites": int(doc.nsites),
-        "volume": float(doc.volume),
-        "energy_cell": float(energy_per_atom * doc.nsites),
-        "space_group": doc.symmetry.number if doc.symmetry else None,
-        "crystal_system": (str(doc.symmetry.crystal_system)
-                           if doc.symmetry else None),
-    }
+    if isinstance(val, dict):
+        items = val.items()
+    elif isinstance(val, str):
+        items = json.loads(val).items()
+    else:
+        try:                       # arrow map -> iterable (key, value)
+            items = list(val)
+            items = [(k, v) for k, v in items]
+        except Exception:
+            return None
+    out = {str(k): int(round(v)) for k, v in items if v is not None}
+    return out or None
 
 
-def fetch_mp_materials(api_key, output_path=config.RAW_MP_PATH,
-                       batch_size=2000, limit=None):
-    """Fetch inorganic materials dari Materials Project dgn checkpoint+resume.
+def _mp_sym(val, key):
+    """Ambil 'number'/'crystal_system' dari kolom symmetry (struct/dict)."""
+    if val is None:
+        return None
+    if isinstance(val, dict):
+        return val.get(key)
+    return getattr(val, key, None)
 
-    Strategi tahan-putus:
-      1. Ambil daftar `material_id` saja (1 field ringan -> cepat).
-      2. Tarik detail per-batch (`batch_size` id sekali query); simpan
-         checkpoint `<output>.partial` SETIAP batch. Kalau proses terputus,
-         jalankan lagi -> otomatis lanjut dari id yang belum terambil.
+
+def fetch_mp_materials(api_key, output_path=config.RAW_MP_PATH, limit=None):
+    """Fetch material MP via Arrow dataset (mp-api lakehouse).
+
+    mp-api baru menyimpan dataset 'summary' sebagai Arrow LOKAL (sekali unduh,
+    lalu cache di ~/mp_datasets). Iterasi objek SummaryDoc satu per satu LAMBAT.
+    Pola idiomatik: ambil pyarrow Table (pilih kolom) -> pandas -> proses
+    tervektorisasi. Jauh lebih cepat karena baca lokal, bukan jaringan.
 
     Args:
-        batch_size: jumlah material_id per query detail.
-        limit:      batasi total material (mode test cepat). None = semua.
+        limit: batasi jumlah baris (mode test cepat). None = semua.
     """
+    import pandas as pd
+
     fields = ["material_id", "formula_pretty", "composition", "nsites",
               "volume", "energy_per_atom", "uncorrected_energy_per_atom",
               "symmetry"]
 
     os.makedirs(config.DATA_DIR, exist_ok=True)
-    ckpt_path = output_path + ".partial"
-
-    # Resume dari checkpoint bila ada.
-    materials, done_ids = [], set()
-    if os.path.exists(ckpt_path):
-        with open(ckpt_path) as f:
-            materials = json.load(f)
-        done_ids = {m["id"] for m in materials}
-        print(f"Resume: {len(done_ids):,} material sudah ada di checkpoint")
 
     with MPRester(api_key) as mpr:
-        print("\nMengambil daftar material_id (ringan)...")
-        all_ids = [str(d.material_id)
-                   for d in mpr.materials.summary.search(fields=["material_id"])]
-        if limit:
-            all_ids = all_ids[:limit]
-        todo = [i for i in all_ids if i not in done_ids]
-        print(f"Total {len(all_ids):,} material, sisa {len(todo):,} diambil")
+        print("\nMengakses dataset summary (Arrow lokal)...")
+        result = mpr.materials.summary.search()
+        ds = getattr(result, "pyarrow_dataset", None)
+        if ds is None:
+            raise RuntimeError(
+                "Client ini tidak punya .pyarrow_dataset. Perbarui mp-api, "
+                "atau beri tahu saya agar pakai jalur iterasi biasa.")
+        schema_names = list(ds.schema.names)
+        print(f"Kolom tersedia ({len(schema_names)}): {schema_names}")
+        cols = [c for c in fields if c in schema_names]
+        df = ds.to_table(columns=cols).to_pandas()
 
-        t0 = time.time()
-        for start in range(0, len(todo), batch_size):
-            batch = todo[start:start + batch_size]
-            docs = mpr.materials.summary.search(material_ids=batch, fields=fields)
-            for doc in docs:
-                try:
-                    rec = _parse_mp_doc(doc)
-                    if rec is not None:
-                        materials.append(rec)
-                except Exception:
-                    continue
+    if limit:
+        df = df.head(limit)
+    print(f"Memproses {len(df):,} baris (vektor)...")
 
-            # Checkpoint tiap batch -> aman bila putus.
-            with open(ckpt_path, "w") as f:
-                json.dump(materials, f)
-
-            done = start + len(batch)
-            rate = done / max(time.time() - t0, 1e-9)
-            eta = (len(todo) - done) / max(rate, 1e-9)
-            print(f"  {done:,}/{len(todo):,} | {len(materials):,} solid | "
-                  f"{rate:.0f}/s | ETA {eta/60:.1f} min")
+    materials = []
+    for row in df.to_dict("records"):
+        try:
+            e = row.get("uncorrected_energy_per_atom")
+            if e is None or pd.isna(e):
+                e = row.get("energy_per_atom")
+            vol = row.get("volume")
+            # Filter non-solid (paper 2.1): proxy volume valid + energi ada.
+            if (e is None or pd.isna(e) or vol is None
+                    or pd.isna(vol) or vol <= 0):
+                continue
+            comp = _mp_comp_to_dict(row.get("composition"))
+            if not comp:
+                continue
+            sg = _mp_sym(row.get("symmetry"), "number")
+            cs = _mp_sym(row.get("symmetry"), "crystal_system")
+            materials.append({
+                "id": str(row["material_id"]),
+                "formula": row.get("formula_pretty"),
+                "composition": comp,
+                "nsites": int(row["nsites"]),
+                "volume": float(vol),
+                "energy_cell": float(e * row["nsites"]),
+                "space_group": int(sg) if sg is not None else None,
+                "crystal_system": str(cs) if cs is not None else None,
+            })
+        except Exception:
+            continue
 
     with open(output_path, "w") as f:
         json.dump(materials, f, indent=2)
-    if os.path.exists(ckpt_path):
-        os.remove(ckpt_path)
 
-    print(f"\nFetched {len(materials):,} materials")
+    print(f"\nFetched {len(materials):,} materials (solid)")
     print(f"Saved to: {output_path}")
     return materials
 
