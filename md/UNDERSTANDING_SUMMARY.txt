@@ -1,0 +1,285 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║              PENJELASAN SKEMA SCRAPING - SIMPLE VERSION                         ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+🎯 TUJUAN AKHIR:
+────────────────
+Membuat model ML yang bisa predict VOLTAGE & VOLUME CHANGE dari suatu material.
+
+
+📊 3 SUMBER DATA:
+─────────────────
+
+1. MATERIALS PROJECT (MP)
+   - Website: materialsproject.org
+   - Python API: mp_api.client.MPRester
+   - Contains: 144,595 materials (crystal structure, energy, dll)
+
+2. AFLOW
+   - Website: aflow.org
+   - API: AFLUX query
+   - Contains: 729,840 materials
+
+3. DATAMU: Dataset_BOTH.csv
+   - 1.77 juta electrode pairs (dari kombinasi MP + AFLOW)
+   - 16 columns (basic properties)
+
+
+🔄 ALUR PROSES (4 TAHAP):
+─────────────────────────
+
+TAHAP 1: FETCH & FIND PAIRS (✅ SUDAH SELESAI)
+├─ Download materials dari MP & AFLOW
+├─ Cari pasangan electrode (charged state + discharged state)
+├─ Hitung properties (voltage, volume change, capacity, energy)
+└─ Output: Dataset_BOTH.csv (1.77M × 16 columns)
+
+TAHAP 2: EXTRACT FEATURES (❌ BELUM DIKERJAKAN)
+├─ Input: Formula strings ("LiCoO2", "CoO2", dll)
+├─ Process: Gunakan Matminer library
+│  └─ Extract 151 numerical features per formula
+│  └─ Combine charged + discharged = 302 features
+├─ Time: ~30-60 menit untuk 1.77M pairs
+└─ Output: Dataset_Features.csv (1.77M × 312 columns)
+
+TAHAP 3: NORMALIZE & PCA (❌ BELUM DIKERJAKAN)
+├─ Process:
+│  ├─ StandardScaler (mean=0, std=1)
+│  └─ PCA (302 features → 120 components, 99.8% variance)
+├─ Time: ~5 menit
+└─ Output: ML_Ready.csv (1.68M × 124 columns)
+
+TAHAP 4: TRAIN MODEL (❌ BELUM DIKERJAKAN)
+├─ Input: 120 PCA components
+├─ Model: Deep Neural Network (7 layers)
+├─ Output: Predict voltage & volume change
+└─ Time: ~20 menit training
+
+
+💾 FILE YANG SUDAH ADA:
+───────────────────────
+✅ data/Dataset_BOTH.csv (201 MB)
+   - 1,770,810 rows
+   - 16 columns (metal, valence, formulas, space groups, properties)
+
+✅ combine_datasets.py
+   - Script untuk generate Dataset_BOTH.csv
+
+✅ featurize.py
+   - Script untuk matminer featurization
+
+
+📝 FILE PENJELASAN YANG BARU DIBUAT:
+────────────────────────────────────
+1. SCRAPING_SCHEMA_VISUAL.md
+   → Visual diagram + step-by-step explanation
+   → Lihat INI DULU untuk paham skemanya!
+
+2. example_data_flow.py
+   → Contoh kode nyata dengan data flow
+   → Jalankan untuk lihat bagaimana data berubah
+
+3. FEATURE_GUIDE.md
+   → Penjelasan lengkap setiap fitur
+
+4. FEATURES_COMPARISON.txt
+   → Comparison table
+
+5. QUICK_REFERENCE.md
+   → Cheat sheet
+
+
+🔍 PENJELASAN SINGKAT TIAP TAHAP:
+─────────────────────────────────
+
+
+TAHAP 1: Dari API ke Dataset Mentah
+──────────────────────────────────
+
+MP API & AFLOW Database
+    ↓
+   [Code: find_pairs() + compute_all()]
+    ↓
+Hasil: 1.77 juta pasangan electrode
+
+Contoh 1 pasangan:
+┌─────────────────────────────────────┐
+│ Discharged: LiCoO2                  │ → Banyak Li, volume besar
+│ Charged:    CoO2                    │ → Sedikit Li, volume kecil
+│                                     │
+│ Li yang hilang = energi dilepas     │
+│ Energi ini = voltage yang dihasilkan│
+└─────────────────────────────────────┘
+
+Dataset_BOTH.csv:
+  metal = "Li"
+  discharged_formula = "LiCoO2"
+  charged_formula = "CoO2"
+  V_av = 3.014 V
+  dV_percent = 30.06%
+  capacity = 198.6 mAh/g
+  specific_energy = 625.4 Wh/kg
+
+
+TAHAP 2: Dari String Formula ke Numerical Features
+──────────────────────────────────────────────────
+
+Formula adalah STRING, ML model perlu NUMBER.
+
+Contoh:
+  "LiCoO2" (string)
+       ↓
+  [Matminer Process]
+  1. Parse formula → get atoms: Li, Co, O
+  2. Lookup atomic properties dari database
+  3. Compute statistics: mean, std, min, max, range
+       ↓
+  Hasil: 151 numerical features
+       ├─ num_elements: 3
+       ├─ electronegativity_mean: 2.45
+       ├─ electronegativity_std: 1.23
+       ├─ atomic_radius_mean: 101.75
+       ├─ atomic_mass_mean: 27.29
+       ├─ valence_mean: 5.5
+       ├─ group_mean: 10.5
+       └─ ... (140 more features)
+
+Untuk 1 pasangan (charged + discharged):
+  151 features (charged) + 151 features (discharged) = 302 features
+
+
+TAHAP 3: Dari Ratusan Features ke 120 PCA Components
+────────────────────────────────────────────────────
+
+302 features → terlalu banyak, ada noise, risk overfitting
+
+Solusi: PCA (Principal Component Analysis)
+
+PCA buat kombinasi linear dari 302 features → 120 komponen baru
+yang capture 99.8% informasi.
+
+Analogi:
+  302 features = 302 buku
+  PCA = summarize 302 buku jadi 120 ringkasan yang tetap punya 99.8% info
+
+
+TAHAP 4: Train Neural Network
+─────────────────────────────
+
+Input: 120 PCA components
+  ↓
+Neural Network (7 layers)
+  ├─ Layer 1: 120 neurons
+  ├─ Layer 2: 80 neurons
+  ├─ Layer 3: 50 neurons
+  ├─ Layer 4: 40 neurons
+  ├─ Layer 5: 30 neurons
+  ├─ Layer 6: 20 neurons
+  └─ Layer 7 (Output): 2 neurons (V_av & dV%)
+  ↓
+Output: Predict voltage & volume change
+
+
+🧮 TOTAL FITUR BREAKDOWN:
+─────────────────────────
+
+1 Pasangan Electrode = 1 Row
+
+┌─────────────────────────────────────────────────┐
+│ 10 PRIMARY FEATURES                             │
+├─────────────────────────────────────────────────┤
+│ 1. Metal type (Li, Na, etc)                     │
+│ 2. Metal valence (1, 2, 3)                      │
+│ 3-4. Number of metal (charged & discharged)    │
+│ 5-6. Space group (charged & discharged)         │
+│ 7-8. Crystal system (charged & discharged)      │
+│ 9-10. Chemical formula (charged & discharged)   │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ 300+ COMPOSITION FEATURES (from Matminer)       │
+├─────────────────────────────────────────────────┤
+│ Per formula (151 features):                     │
+│  - Stoichiometry (p2, p5, p7, p10, dll)        │
+│  - Electronegativity (mean, std, min, max)     │
+│  - Atomic radius (mean, std, range)             │
+│  - Atomic number (mean, min, max)               │
+│  - Atomic mass (mean, min, max)                 │
+│  - Valence electrons (mean, min, max)           │
+│  - Periodic group (mean, min, max)              │
+│  - ... (+ ~100 more)                            │
+│                                                  │
+│ × 2 (charged + discharged) = 302 features      │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ 4 TARGET VARIABLES                              │
+├─────────────────────────────────────────────────┤
+│ 1. V_av (average voltage)                       │
+│ 2. dV_percent (volume change %)                 │
+│ 3. capacity (mAh/g)                             │
+│ 4. specific_energy (Wh/kg)                      │
+└─────────────────────────────────────────────────┘
+
+Total: 10 + 300 + 4 = 314 columns per row
+After PCA: 120 + 4 = 124 columns per row
+
+
+📚 REKOMENDASI MEMBACA:
+──────────────────────
+
+Baca dalam urutan ini:
+
+1️⃣  SCRAPING_SCHEMA_VISUAL.md (PALING PENTING!)
+   → Ada diagram visual yang jelas
+   → Baca STEP 1-8 nya
+
+2️⃣  example_data_flow.py
+   → Jalankan: python example_data_flow.py
+   → Lihat bagaimana data berubah dari raw → final
+
+3️⃣  QUICK_REFERENCE.md
+   → Cheat sheet untuk reference cepat
+
+4️⃣  FEATURE_GUIDE.md
+   → Detail penjelasan tiap kategori fitur
+
+
+✅ CHECKLIST:
+─────────────
+
+Sudah selesai:
+  ✅ Fetch data dari MP & AFLOW (233K materials)
+  ✅ Find electrode pairs (1.77M pairs)
+  ✅ Compute properties (V_av, dV%, capacity, SE)
+  ✅ Save Dataset_BOTH.csv
+
+Perlu dikerjakan:
+  ❌ Add 300 composition features dengan Matminer
+  ❌ Normalize & PCA
+  ❌ Filter outliers
+  ❌ Train DNN model
+
+
+⏱️  WAKTU ESTIMASI:
+───────────────────
+
+Matminer featurization: 30-60 menit
+Normalize & PCA: 5 menit
+Train model: 20 menit
+────────────────────────
+Total: 1.5-2 jam
+
+
+🎯 NEXT ACTION:
+───────────────
+
+1. Baca SCRAPING_SCHEMA_VISUAL.md dengan teliti
+2. Jalankan example_data_flow.py untuk lihat contohnya
+3. Buat script untuk matminer featurization (atau gunakan featurize.py yang sudah ada)
+4. Jalankan normalisasi & PCA
+5. Train model
+
+Done! 🚀
+

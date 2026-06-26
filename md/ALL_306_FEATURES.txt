@@ -1,0 +1,338 @@
+═════════════════════════════════════════════════════════════════════════════════
+    DAFTAR 306 FITUR LENGKAP (Sebelum PCA)
+═════════════════════════════════════════════════════════════════════════════════
+
+BAGIAN 1: PRIMARY FEATURES (10 fitur) ✅ Ada di Dataset_BOTH.csv
+───────────────────────────────────────────────────────────────────────────
+
+  1. active_metal                          (Li, Na, K, Rb, Cs, Mg, Ca, Al, Zn, Y)
+  2. metal_valence                         (1, 2, 3)
+  3. number_metal_ions_charged             (float)
+  4. number_metal_ions_discharged          (float)
+  5. space_group_charged                   (int 1-230)
+  6. space_group_discharged                (int 1-230)
+  7. crystal_system_charged                (str: Cubic, Hexagonal, etc)
+  8. crystal_system_discharged             (str: Cubic, Hexagonal, etc)
+  9. formula_charged                       (str: "CoO2")
+ 10. formula_discharged                    (str: "LiCoO2")
+
+
+BAGIAN 2: COMPOSITION FEATURES (302 fitur) ❌ Perlu Matminer
+───────────────────────────────────────────────────────────────────────────
+
+Dari 151 fitur per formula × 2 (charged + discharged) = 302 fitur
+
+Format: [feature_name] → [discharged version] + [charged version]
+
+
+A. STOICHIOMETRY FEATURES (~5-10 fitur)
+────────────────────────────────────────
+
+disch__num_elements                    /  chg__num_elements
+disch__stoich_p2                       /  chg__stoich_p2       (Σ fractions²)
+disch__stoich_p5                       /  chg__stoich_p5       (Σ fractions⁵)
+disch__stoich_p7                       /  chg__stoich_p7       (Σ fractions⁷)
+disch__stoich_p10                      /  chg__stoich_p10      (Σ fractions¹⁰)
+disch__stoich_pseudo_power             /  chg__stoich_pseudo_power
+disch__stoich_norm_volume              /  chg__stoich_norm_volume
+
+
+B. ELECTRONEGATIVITY FEATURES (X - Pauling scale) (~10-12 fitur)
+──────────────────────────────────────────────────────────────────
+
+disch__X_mean                          /  chg__X_mean
+disch__X_min                           /  chg__X_min
+disch__X_max                           /  chg__X_max
+disch__X_range                         /  chg__X_range
+disch__X_deviation                     /  chg__X_deviation
+disch__X_mode                          /  chg__X_mode
+disch__X_entropy                       /  chg__X_entropy
+disch__X_weighted_mean                 /  chg__X_weighted_mean
+disch__X_weighted_std                  /  chg__X_weighted_std
+
+
+C. ATOMIC RADIUS FEATURES (~15-20 fitur)
+──────────────────────────────────────────
+
+disch__atomic_radius_mean              /  chg__atomic_radius_mean
+disch__atomic_radius_min               /  chg__atomic_radius_min
+disch__atomic_radius_max               /  chg__atomic_radius_max
+disch__atomic_radius_range             /  chg__atomic_radius_range
+disch__atomic_radius_deviation         /  chg__atomic_radius_deviation
+disch__atomic_radius_mode              /  chg__atomic_radius_mode
+disch__atomic_radius_entropy           /  chg__atomic_radius_entropy
+disch__atomic_radius_weighted_mean     /  chg__atomic_radius_weighted_mean
+disch__atomic_radius_weighted_std      /  chg__atomic_radius_weighted_std
+
+disch__covalent_radius_mean            /  chg__covalent_radius_mean
+disch__covalent_radius_min             /  chg__covalent_radius_min
+disch__covalent_radius_max             /  chg__covalent_radius_max
+disch__covalent_radius_range           /  chg__covalent_radius_range
+disch__covalent_radius_deviation       /  chg__covalent_radius_deviation
+disch__covalent_radius_weighted_mean   /  chg__covalent_radius_weighted_mean
+
+
+D. ATOMIC NUMBER (Z) FEATURES (~9 fitur)
+──────────────────────────────────────────
+
+disch__Z_mean                          /  chg__Z_mean
+disch__Z_min                           /  chg__Z_min
+disch__Z_max                           /  chg__Z_max
+disch__Z_range                         /  chg__Z_range
+disch__Z_deviation                     /  chg__Z_deviation
+disch__Z_mode                          /  chg__Z_mode
+disch__Z_entropy                       /  chg__Z_entropy
+disch__Z_weighted_mean                 /  chg__Z_weighted_mean
+
+
+E. ATOMIC MASS FEATURES (~9 fitur)
+────────────────────────────────────
+
+disch__atomic_mass_mean                /  chg__atomic_mass_mean
+disch__atomic_mass_min                 /  chg__atomic_mass_min
+disch__atomic_mass_max                 /  chg__atomic_mass_max
+disch__atomic_mass_range               /  chg__atomic_mass_range
+disch__atomic_mass_deviation           /  chg__atomic_mass_deviation
+disch__atomic_mass_mode                /  chg__atomic_mass_mode
+disch__atomic_mass_entropy             /  chg__atomic_mass_entropy
+disch__atomic_mass_weighted_mean       /  chg__atomic_mass_weighted_mean
+
+
+F. VALENCE ELECTRONS FEATURES (~20-25 fitur)
+──────────────────────────────────────────────
+
+disch__valence_mean                    /  chg__valence_mean
+disch__valence_min                     /  chg__valence_min
+disch__valence_max                     /  chg__valence_max
+disch__valence_range                   /  chg__valence_range
+disch__valence_deviation               /  chg__valence_deviation
+disch__valence_entropy                 /  chg__valence_entropy
+
+disch__s_valence_mean                  /  chg__s_valence_mean
+disch__s_valence_min                   /  chg__s_valence_min
+disch__s_valence_max                   /  chg__s_valence_max
+disch__s_valence_range                 /  chg__s_valence_range
+disch__s_valence_deviation             /  chg__s_valence_deviation
+
+disch__p_valence_mean                  /  chg__p_valence_mean
+disch__p_valence_min                   /  chg__p_valence_min
+disch__p_valence_max                   /  chg__p_valence_max
+disch__p_valence_range                 /  chg__p_valence_range
+disch__p_valence_deviation             /  chg__p_valence_deviation
+
+disch__d_valence_mean                  /  chg__d_valence_mean
+disch__d_valence_min                   /  chg__d_valence_min
+disch__d_valence_max                   /  chg__d_valence_max
+disch__d_valence_range                 /  chg__d_valence_range
+disch__d_valence_deviation             /  chg__d_valence_deviation
+
+disch__f_valence_mean                  /  chg__f_valence_mean
+disch__f_valence_max                   /  chg__f_valence_max
+
+
+G. PERIODIC TABLE GROUP FEATURES (~9 fitur)
+──────────────────────────────────────────────
+
+disch__group_mean                      /  chg__group_mean
+disch__group_min                       /  chg__group_min
+disch__group_max                       /  chg__group_max
+disch__group_range                     /  chg__group_range
+disch__group_deviation                 /  chg__group_deviation
+disch__group_mode                      /  chg__group_mode
+disch__group_entropy                   /  chg__group_entropy
+disch__group_weighted_mean             /  chg__group_weighted_mean
+
+
+H. PERIOD (ROW) FEATURES (~9 fitur)
+─────────────────────────────────────
+
+disch__period_mean                     /  chg__period_mean
+disch__period_min                      /  chg__period_min
+disch__period_max                      /  chg__period_max
+disch__period_range                    /  chg__period_range
+disch__period_deviation                /  chg__period_deviation
+disch__period_mode                     /  chg__period_mode
+disch__period_entropy                  /  chg__period_entropy
+disch__period_weighted_mean            /  chg__period_weighted_mean
+
+
+I. BLOCK (s, p, d, f) FEATURES (~12 fitur)
+─────────────────────────────────────────────
+
+disch__block_s_fraction                /  chg__block_s_fraction
+disch__block_p_fraction                /  chg__block_p_fraction
+disch__block_d_fraction                /  chg__block_d_fraction
+disch__block_f_fraction                /  chg__block_f_fraction
+disch__block_entropy                   /  chg__block_entropy
+disch__block_mean                      /  chg__block_mean
+
+
+J. SPECIFIC VOLUME FEATURES (~9 fitur)
+────────────────────────────────────────
+
+disch__specific_volume_mean            /  chg__specific_volume_mean
+disch__specific_volume_min             /  chg__specific_volume_min
+disch__specific_volume_max             /  chg__specific_volume_max
+disch__specific_volume_range           /  chg__specific_volume_range
+disch__specific_volume_deviation       /  chg__specific_volume_deviation
+disch__specific_volume_mode            /  chg__specific_volume_mode
+disch__specific_volume_entropy         /  chg__specific_volume_entropy
+disch__specific_volume_weighted_mean   /  chg__specific_volume_weighted_mean
+
+
+K. MELTING TEMPERATURE FEATURES (~6 fitur)
+────────────────────────────────────────────
+
+disch__melting_temperature_mean        /  chg__melting_temperature_mean
+disch__melting_temperature_min         /  chg__melting_temperature_min
+disch__melting_temperature_max         /  chg__melting_temperature_max
+disch__melting_temperature_range       /  chg__melting_temperature_range
+disch__melting_temperature_deviation   /  chg__melting_temperature_deviation
+
+
+L. BAND GAP FEATURES (~6 fitur)
+───────────────────────────────
+
+disch__band_gap_mean                   /  chg__band_gap_mean
+disch__band_gap_min                    /  chg__band_gap_min
+disch__band_gap_max                    /  chg__band_gap_max
+disch__band_gap_range                  /  chg__band_gap_range
+disch__band_gap_deviation              /  chg__band_gap_deviation
+
+
+M. ION PROPERTY FEATURES (~6-12 fitur)
+────────────────────────────────────────
+
+disch__ion_property_first              /  chg__ion_property_first
+disch__ion_property_second             /  chg__ion_property_second
+disch__ion_property_third              /  chg__ion_property_third
+disch__ion_property_mean               /  chg__ion_property_mean
+disch__ion_property_range              /  chg__ion_property_range
+disch__ion_property_deviation          /  chg__ion_property_deviation
+disch__ion_property_weighted_mean      /  chg__ion_property_weighted_mean
+
+
+N. VALENCE ORBITAL FEATURES (~12 fitur)
+─────────────────────────────────────────
+
+disch__valence_orbital_s_fraction      /  chg__valence_orbital_s_fraction
+disch__valence_orbital_p_fraction      /  chg__valence_orbital_p_fraction
+disch__valence_orbital_d_fraction      /  chg__valence_orbital_d_fraction
+disch__valence_orbital_f_fraction      /  chg__valence_orbital_f_fraction
+disch__valence_orbital_entropy         /  chg__valence_orbital_entropy
+disch__valence_orbital_mean            /  chg__valence_orbital_mean
+
+
+O. MENDELEEV NUMBER FEATURES (~9 fitur)
+──────────────────────────────────────────
+
+disch__mendeleev_mean                  /  chg__mendeleev_mean
+disch__mendeleev_min                   /  chg__mendeleev_min
+disch__mendeleev_max                   /  chg__mendeleev_max
+disch__mendeleev_range                 /  chg__mendeleev_range
+disch__mendeleev_deviation             /  chg__mendeleev_deviation
+disch__mendeleev_mode                  /  chg__mendeleev_mode
+disch__mendeleev_entropy               /  chg__mendeleev_entropy
+disch__mendeleev_weighted_mean         /  chg__mendeleev_weighted_mean
+
+
+P. ADDITIONAL MAGPIE PROPERTIES (~15-20 fitur)
+───────────────────────────────────────────────
+
+disch__thermal_conductivity_mean       /  chg__thermal_conductivity_mean
+disch__ionization_energy_mean          /  chg__ionization_energy_mean
+disch__electron_affinity_mean          /  chg__electron_affinity_mean
+disch__polarizability_mean             /  chg__polarizability_mean
+disch__BulkModulus_mean                /  chg__BulkModulus_mean
+disch__ShearModulus_mean               /  chg__ShearModulus_mean
+disch__DebyeTemperature_mean           /  chg__DebyeTemperature_mean
+disch__molarVolume_mean                /  chg__molarVolume_mean
+disch__density_mean                    /  chg__density_mean
+... (+ ~10 more properties)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+BAGIAN 3: REMOVED FEATURES (-4 fitur)
+───────────────────────────────────────────────────────────────────────────
+
+Fitur berikut dihapus karena bernilai 0 untuk SEMUA data:
+
+❌ disch__min_f_valence_electrons       /  chg__min_f_valence_electrons
+❌ disch__min_unfilled_f_states         /  chg__min_unfilled_f_states
+❌ disch__min_band_gap                  /  chg__min_band_gap
+❌ disch__min_magnetic_moment           /  chg__min_magnetic_moment
+
+(Total removed: 4 × 2 = 8 fitur, tapi dihitung sebagai 4 di paper)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+RINGKASAN TOTAL FITUR:
+
+Primary Features:                      10
+Composition Features (151 × 2):      302
+                                     ────
+Subtotal:                            312
+
+Remove zero-variance features:         -4
+                                     ────
+TOTAL FEATURES (input to PCA):       308
+
+After PCA (120 components):          120
++ Target variables:                    2
+                                     ────
+FINAL ML-READY FEATURES:             122
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+CONTOH: Breakdown untuk 1 Material "LiCoO2"
+
+Electronegativity (X):
+  Li: 0.98
+  Co: 1.88
+  O:  3.44 (dihitung 2x)
+  
+  X_mean = (0.98 + 1.88 + 3.44 + 3.44) / 4 = 2.44
+  X_min = 0.98
+  X_max = 3.44
+  X_range = 2.46
+  X_deviation = 1.23
+  X_entropy = ?
+  X_weighted_mean = ?
+  
+  → Total 9 fitur electronegativity per formula
+
+Atomic Radius:
+  Li: 152 pm
+  Co: 135 pm
+  O:  60 pm (dihitung 2x)
+  
+  atomic_radius_mean = (152 + 135 + 60 + 60) / 4 = 101.75
+  ... (+ 8 more radius features)
+  
+  → Total 9 fitur atomic radius per formula
+
+Valence:
+  Li: 1 valence electron
+  Co: 9 valence electrons
+  O:  6 valence electrons
+  
+  valence_mean = (1 + 9 + 6 + 6) / 4 = 5.5
+  ... (+ 8 more valence features)
+  
+  → Total 9 fitur valence per formula
+
+... dan seterusnya untuk ~140 fitur lainnya
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+TOTAL: ~151 fitur per chemical formula
+× 2 (charged + discharged) = 302 fitur composition
++ 10 primary features = 312 features
+- 4 zero-variance features = 308 features input to PCA
+→ PCA(120 components) = 120 PCA features
+
+═════════════════════════════════════════════════════════════════════════════════

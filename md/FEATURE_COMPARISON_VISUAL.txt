@@ -1,0 +1,225 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║          PERBANDINGAN: Dataset_BOTH.csv vs SI.pdf Features                      ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+📊 APA ITU DATASET_BOTH.CSV?
+════════════════════════════════════════════════════════════════════════════════
+
+Status: TAHAP 1 dari 4 tahap pipeline
+File Size: 201 MB
+Rows: 1,770,810 electrode pairs
+Columns: 16
+
+┌────────────────────────────────────────────────────────────────────┐
+│                    DATASET_BOTH.CSV STRUCTURE                      │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│ ✅ COLUMN 1-2: Metal Info (2 columns)                             │
+│    ├─ metal: "Li", "Na", "K", etc                                 │
+│    └─ valence: 1, 2, 3                                            │
+│                                                                    │
+│ ✅ COLUMN 3-4: Metal Count (2 columns)                            │
+│    ├─ x1_charged: jumlah metal dalam charged state               │
+│    └─ x2_discharged: jumlah metal dalam discharged state         │
+│                                                                    │
+│ ✅ COLUMN 5-8: Structure Info (4 columns)                         │
+│    ├─ discharged_sg: space group number (1-230)                  │
+│    ├─ charged_sg: space group number (1-230)                     │
+│    ├─ discharged_cs: crystal system string                       │
+│    └─ charged_cs: crystal system string                          │
+│                                                                    │
+│ ✅ COLUMN 9-12: Identifiers (4 columns)                           │
+│    ├─ discharged_id: "mp-123456" atau "auid-xxx"               │
+│    ├─ discharged_formula: "LiCoO2"                               │
+│    ├─ charged_id: "mp-234567"                                    │
+│    └─ charged_formula: "CoO2"                                    │
+│                                                                    │
+│ ✅ COLUMN 13-16: Computed Properties (4 columns)                  │
+│    ├─ V_av: Average voltage (eV) → TARGET                        │
+│    ├─ dV_percent: Volume change (%) → TARGET                     │
+│    ├─ capacity_mAh_g: Specific capacity → TARGET                 │
+│    └─ specific_energy_Wh_kg: Energy density → TARGET             │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+Total Features: 16 (6 identifiers + 4 structure + 4 properties)
+What's Missing: 300 composition features + 120 PCA components
+
+
+📊 APA ITU SI.PDF RESULTS?
+════════════════════════════════════════════════════════════════════════════════
+
+Status: TAHAP 4 - FINAL ML RESULTS (setelah tahap 2, 3, 4)
+Data Source: AFLOW database subset
+Rows: 22,432 training pairs + test sets
+Columns: 122 (120 PCA components + 2 targets)
+
+┌────────────────────────────────────────────────────────────────────┐
+│                  SI.PDF ML-READY DATA STRUCTURE                    │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│ ✅ COLUMN 1-120: PCA Components (120 columns)                     │
+│    ├─ PC1, PC2, PC3, ... PC120                                    │
+│    ├─ Derived dari 306 composition features                      │
+│    ├─ Normalized (StandardScaler)                                │
+│    ├─ Explained variance: 99.8%                                  │
+│    └─ Each PC = linear combination dari original features        │
+│                                                                    │
+│ ✅ COLUMN 121-122: Target Variables (2 columns)                   │
+│    ├─ V_av: Average voltage (DFT computed, NOT predicted)        │
+│    └─ dV_percent: Volume change (DFT computed, NOT predicted)    │
+│                                                                    │
+│ ⚠️  NOT INCLUDED: Formulas, metal type, identifiers               │
+│    (sudah diextract sebagai features, tidak perlu lagi)          │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+Total Features: 120 PCA components (dimensionality reduced dari 306)
+Total Targets: 2 (V_av, dV%)
+Data Quality: Filtered outliers (V_av: -13 to 13V, dV% < 500%)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+🔄 TRANSFORMASI DATA (Pipeline):
+
+Dataset_BOTH.csv
+     ↓
+     │ ADA: 16 columns (basic properties)
+     │ KURANG: 300 composition features
+     ↓
+Matminer Feature Extraction
+     ↓
+Dataset_Features.csv
+     ├─ 16 original columns
+     ├─ + 300 matminer features (151×2)
+     └─ = 312 columns total
+     ↓
+     │ ADA: 312 features
+     │ KURANG: Normalization & PCA
+     ↓
+StandardScaler + PCA
+     ↓
+ML_Ready.csv
+     ├─ 120 PCA components (dari 306 features)
+     ├─ 4 targets (V_av, dV%, capacity, SE)
+     └─ = 124 columns
+     ↓
+     │ ADA: ML-ready data
+     │ SIAP: Train neural network
+     ↓
+Trained DNN Model
+     ↓
+Predictions
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+📈 FEATURE COUNT JOURNEY:
+
+Stage 1 (Dataset_BOTH.csv):
+  ├─ Primary: 10 features
+  ├─ Structure: 4 features
+  ├─ Properties: 4 features
+  └─ Identifiers: 2 features
+  ─────────────────────────
+  TOTAL: 16 features ✅ (Anda punya ini)
+
+Stage 2 (Matminer extraction):
+  ├─ Original 16 features
+  ├─ + Discharged composition: 151 features
+  ├─ + Charged composition: 151 features
+  ├─ TOTAL: 16 + 151 + 151 = 318
+  └─ Remove 10 redundant = 308 ✅
+
+Stage 3 (Quality assurance):
+  ├─ Remove 4 zero-variance features
+  ├─ TOTAL: 308 - 4 = 304 ✅
+
+Stage 4 (PCA):
+  ├─ 304 features → PCA
+  ├─ Keep 120 components (99.8% variance)
+  └─ TOTAL: 120 components ✅ (Ini ada di SI.pdf)
+
+Stage 5 (Add targets):
+  ├─ 120 PCA components
+  ├─ + V_av (target)
+  ├─ + dV% (target)
+  └─ TOTAL: 122 columns (120 + 2)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+🤔 JAWABAN LENGKAP: KENAPA BERBEDA?
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ Dataset_BOTH.csv ≠ SI.pdf results KARENA:                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│ 1. BEDA TAHAP PIPELINE                                             │
+│    ├─ Dataset_BOTH.csv: TAHAP 1 (find pairs & compute properties) │
+│    └─ SI.pdf: TAHAP 4 (after feature extraction + PCA)            │
+│                                                                     │
+│ 2. BEDA FITUR                                                      │
+│    ├─ Dataset_BOTH.csv: 16 raw features                           │
+│    ├─ SI.pdf: 120 PCA components (derived dari 306 features)      │
+│    └─ Dataset_BOTH hilang 306 composition features!               │
+│                                                                     │
+│ 3. BEDA DATA QUALITY                                               │
+│    ├─ Dataset_BOTH.csv: Include outliers (V_av extreme)           │
+│    └─ SI.pdf: Filtered (V_av: -13 to 13V, dV% < 500%)           │
+│                                                                     │
+│ 4. BEDA ROWS                                                        │
+│    ├─ Dataset_BOTH.csv: 1.77M pairs (MP + AFLOW)                 │
+│    └─ SI.pdf: 22.4K training pairs (AFLOW only)                  │
+│                                                                     │
+│ 5. BEDA PREPROCESSING                                              │
+│    ├─ Dataset_BOTH.csv: No normalization, No PCA                  │
+│    └─ SI.pdf: StandardScaler + PCA applied                        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+📋 TABEL PERBANDINGAN LENGKAP:
+
+┌──────────────────────┬──────────────────────┬──────────────────────┐
+│ Aspek                │ Dataset_BOTH.csv     │ SI.pdf Results       │
+├──────────────────────┼──────────────────────┼──────────────────────┤
+│ Tahap Pipeline       │ TAHAP 1              │ TAHAP 4 (Final)      │
+│ File Size            │ 201 MB               │ ~100 MB (smaller)    │
+│ Rows                 │ 1,770,810            │ 22,432 training      │
+│ Features             │ 16                   │ 120 PCA components   │
+│ Targets              │ 4                    │ 2 (V_av, dV%)        │
+│ Data Source          │ MP + AFLOW           │ AFLOW only           │
+│ Include Formulas?    │ ✅ Yes               │ ❌ No (extracted)     │
+│ Include Metal Info?  │ ✅ Yes               │ ❌ No (extracted)     │
+│ Composition Features │ ❌ No                │ ✅ Yes (via PCA)     │
+│ Normalized?          │ ❌ No                │ ✅ Yes (StandardScaler)|
+│ PCA Applied?         │ ❌ No                │ ✅ Yes (120 comp)    │
+│ Outliers Filtered?   │ ❌ No                │ ✅ Yes               │
+│ Ready for ML Model?  │ ❌ Not Yet           │ ✅ Yes               │
+└──────────────────────┴──────────────────────┴──────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+🎯 KESIMPULAN:
+
+Dataset_BOTH.csv adalah INTERMEDIATE DATA (raw results dari tahap 1)
+SI.pdf adalah FINAL DATA (setelah complete processing)
+
+Untuk MATCH SI.pdf, Anda perlu:
+
+1. ✅ Dataset_BOTH.csv (sudah ada)
+2. ❌ + 300 composition features (matminer)
+3. ❌ + Normalization (StandardScaler)
+4. ❌ + PCA (120 components)
+5. ❌ + Filter outliers (V_av & dV%)
+6. ❌ + Train DNN model
+
+BUKAN karena Dataset_BOTH.csv "salah" - tapi karena belum complete!
+
+═════════════════════════════════════════════════════════════════════════════════

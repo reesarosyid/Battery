@@ -1,0 +1,198 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    FITUR: MATERIALS PROJECT vs BATTERY MODEL                     ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+┌─ KATEGORI 1: PRIMARY FEATURES (10 FITUR) ───────────────────────────────────┐
+│                                                                              │
+│ Dari ELECTRODE PAIR + MATERIAL INFO                                         │
+│                                                                              │
+│ ┌── Active Metal (1 fitur) ─────────────────────────────────────────────┐  │
+│ │ • Type: Li, Na, K, Rb, Cs, Mg, Ca, Al, Zn, Y                        │  │
+│ │ • Sumber: Manual config (ACTIVE_METALS list)                        │  │
+│ │ • Contoh: "Li"                                                       │  │
+│ └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│ ┌── Metal Valence (1 fitur) ────────────────────────────────────────────┐  │
+│ │ • Type: 1, 2, atau 3                                                 │  │
+│ │ • Sumber: Manual lookup (VALENCE dict)                               │  │
+│ │ • Contoh: 1 (untuk Li), 2 (untuk Mg)                                 │  │
+│ └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│ ┌── Number of Metal in Electrodes (2 fitur) ─────────────────────────────┐  │
+│ │ • Charged: x1_charged (jumlah M dalam charged electrode)             │  │
+│ │ • Discharged: x2_discharged (jumlah M dalam discharged)              │  │
+│ │ • Sumber: composition dict dari material                              │  │
+│ │ • Contoh: x1=1.0, x2=2.0 (artinya transfer 1 ion)                    │  │
+│ └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│ ┌── Space Group (2 fitur) ──────────────────────────────────────────────┐  │
+│ │ • Charged: discharged_sg (space group number 1-230)                  │  │
+│ │ • Discharged: charged_sg (space group number 1-230)                  │  │
+│ │ • Sumber: doc.symmetry.number (dari MPRester)                        │  │
+│ │ • Contoh: 227 (body-centered cubic), 166 (trigonal)                  │  │
+│ └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│ ┌── Crystal System (2 fitur) ───────────────────────────────────────────┐  │
+│ │ • Charged: discharged_cs                                             │  │
+│ │ • Discharged: charged_cs                                             │  │
+│ │ • Sumber: doc.symmetry.crystal_system (dari MPRester)                │  │
+│ │ • Nilai: Cubic, Hexagonal, Trigonal, Tetragonal, Orthorhombic,      │  │
+│ │          Monoclinic, Triclinic                                       │  │
+│ └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│ ┌── Chemical Formula (2 fitur) ──────────────────────────────────────────┐  │
+│ │ • Charged formula (string)                                           │  │
+│ │ • Discharged formula (string)                                        │  │
+│ │ • Sumber: doc.formula_pretty (dari MPRester)                         │  │
+│ │ • Contoh: "LiCoO2", "CoO2"                                           │  │
+│ │ • Fungsi: Input untuk matminer featurization                         │  │
+│ └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│ STATUS ANDA: ✅ SUDAH PUNYA SEMUA (di Dataset_BOTH.csv)                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ KATEGORI 2: COMPOSITION FEATURES (300 FITUR) ────────────────────────────┐
+│                                                                            │
+│ Dari CHEMICAL FORMULA → MATMINER LIBRARY                                  │
+│                                                                            │
+│ Total: 151 fitur per formula × 2 (charged + discharged) = 302 fitur      │
+│                                                                            │
+│ ┌── A. STOICHIOMETRY FEATURES ──────────────────────────────────────────┐ │
+│ │ • num_elements: Jumlah elemen unik                                    │ │
+│ │ • stoich_p2 to p10: Σ(fraction^k) untuk k=2,5,7,10                   │ │
+│ │ • Contoh: Untuk Li2CoO2                                               │ │
+│ │   - num_elements = 3                                                  │ │
+│ │   - stoich_p2 = (0.5)² + (0.25)² + (0.25)² = 0.375                   │ │
+│ └────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│ ┌── B. ELEMENT PROPERTY FEATURES (MAGPIE PRESET) ──────────────────────┐ │
+│ │                                                                        │ │
+│ │ ⚡ Electronegativity (X - Pauling scale):                             │ │
+│ │    - X_mean, X_min, X_max, X_range, X_std                           │ │
+│ │    - Contoh: Li=0.98, Co=1.88, O=3.44                               │ │
+│ │                                                                        │ │
+│ │ 📏 Atomic Radius:                                                    │ │
+│ │    - atomic_radius_mean, min, max, range, std                       │ │
+│ │    - Contoh: Li=152pm, Co=135pm, O=60pm                             │ │
+│ │                                                                        │ │
+│ │ 🔢 Atomic Number (Z):                                                │ │
+│ │    - Z_mean, Z_min, Z_max                                           │ │
+│ │    - Contoh: Li=3, Co=27, O=8                                       │ │
+│ │                                                                        │ │
+│ │ ⚖️  Atomic Mass:                                                      │ │
+│ │    - mass_mean, mass_min, mass_max                                   │ │
+│ │    - Contoh: Li=6.94, Co=58.93, O=16.00                             │ │
+│ │                                                                        │ │
+│ │ 🪑 Periodic Group (Column):                                          │ │
+│ │    - group_mean, group_min, group_max                                │ │
+│ │    - Contoh: Li=1, Co=9, O=16                                        │ │
+│ │                                                                        │ │
+│ │ ✋ Valence Electrons:                                                 │ │
+│ │    - valence_mean, valence_min, valence_max                         │ │
+│ │    - Contoh: Li=1, Co=9, O=6                                        │ │
+│ │                                                                        │ │
+│ │ + LEBIH BANYAK... (~151 fitur total)                                 │ │
+│ └────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│ STATUS ANDA: ❌ BELUM ADA (hanya formulas, belum di-featurize)             │
+│ ACTION: Gunakan matminer untuk extract                                     │
+│                                                                            │
+│    from matminer.featurizers.composition import (                         │
+│        Stoichiometry, ElementProperty, ValenceOrbital, IonProperty      │
+│    )                                                                       │
+│                                                                            │
+│    featurizer = MultipleFeaturizer([                                      │
+│        Stoichiometry(),                                                   │
+│        ElementProperty.from_preset("magpie"),                            │
+│        ValenceOrbital(props=["frac"]),                                   │
+│        IonProperty(fast=True),                                           │
+│    ])                                                                      │
+│                                                                            │
+│    for formula in ["LiCoO2", "CoO2", ...]:                                │
+│        comp = Composition(formula)                                        │
+│        features = featurizer.featurize(comp)  → 151 fitur               │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ FEATURES YANG DIHAPUS ─────────────────────────────────────────────────────┐
+│                                                                              │
+│ Dari 310 fitur (10 primary + 300 composition), 4 fitur dihapus karena       │
+│ semua values = 0 across entire database:                                    │
+│                                                                              │
+│ ❌ Minimum number of f valence electrons                                    │
+│ ❌ Minimum number of unfilled f states                                      │
+│ ❌ Minimum bandgap                                                          │
+│ ❌ Minimum magnetic moment                                                  │
+│                                                                              │
+│ Hasil akhir: 306 fitur → normalize → PCA → 120 komponen (99.8% variance)    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                              COMPARISON TABLE                                   ║
+╠═══════════════════════╦══════════════════════════╦═════════════════════════════╣
+║ Feature Source        ║ How to Get               ║ Effort (Easy → Hard)        ║
+╠═══════════════════════╬══════════════════════════╬═════════════════════════════╣
+║ 1. Active metal       ║ Manual (from config)     ║ ★☆☆☆☆ (trivial)            ║
+║ 2. Valence            ║ Manual lookup            ║ ★☆☆☆☆ (trivial)            ║
+║ 3-4. Metal count      ║ composition dict         ║ ★☆☆☆☆ (direct dict access) ║
+║ 5-6. Space group      ║ doc.symmetry.number     ║ ★☆☆☆☆ (API field)          ║
+║ 7-8. Crystal system   ║ doc.symmetry.crystal    ║ ★☆☆☆☆ (API field)          ║
+║ 9-10. Formulas        ║ doc.formula_pretty      ║ ★☆☆☆☆ (API field)          ║
+╠═══════════════════════╬══════════════════════════╬═════════════════════════════╣
+║ 151×2 Composition     ║ matminer.featurize()     ║ ★★☆☆☆ (library call)       ║
+║ features (300 total)  ║ from formula strings     ║ ★★★☆☆ (slow on 1.77M)      ║
+╠═══════════════════════╬══════════════════════════╬═════════════════════════════╣
+║ ALTERNATIVE:          ║                          ║                             ║
+║ Manual element props   ║ element.X, .atomic_r    ║ ★★★★☆ (query per element)   ║
+║ via MPRester          ║ element.group, .Z, etc   ║ ★★★★★ (very slow)           ║
+║ (TIDAK RECOMMENDED!)  ║                          ║                             ║
+╚═══════════════════════╩══════════════════════════╩═════════════════════════════╝
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                             TOTAL FITUR SUMMARY                                ║
+╠════════════════════════════════╦═══════════════════════════════════════════════╣
+║ Category                       ║ Count    │ Status   │ Source                  ║
+╠════════════════════════════════╬════════════════════════════════════════════════╣
+║ Primary Features               ║ 10       │ ✅ Done  │ Config + API + formula  ║
+║ Composition Features (matminer)║ 300      │ ❌ TODO  │ Matminer library        ║
+║ Removed (zero-variance)        ║ -4       │ --       │ PCA preprocessing       ║
+╠════════════════════════════════╬════════════════════════════════════════════════╣
+║ TOTAL after cleaning           ║ 306      │ --       │ Normalized input        ║
+║ After PCA (99.8% variance)     ║ 120      │ ❌ TODO  │ scikit-learn PCA        ║
+║ + Target variables             ║ 4        │ ✅ Done  │ V_av, dV%, capacity, SE ║
+╠════════════════════════════════╩════════════════════════════════════════════════╣
+║ READY FOR ML: 120 PCA components + 4 targets = 124 columns per sample        ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                         WHAT YOU SHOULD SCRAPE                                 ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                ║
+║  ✅ DO SCRAPE (sudah Anda lakukan):                                            ║
+║  ─────────────────────────────────────────────────────────────────────────    ║
+║  • formula_pretty → chemical formula strings                                  ║
+║  • symmetry.number → space group                                              ║
+║  • symmetry.crystal_system → crystal type                                     ║
+║  • composition → jumlah setiap elemen                                         ║
+║  • energy_per_atom → DFT energi                                               ║
+║  • volume → unit cell volume                                                  ║
+║                                                                                ║
+║  ❌ DON'T SCRAPE (gunakan matminer instead):                                   ║
+║  ─────────────────────────────────────────────────────────────────────────    ║
+║  • element.X (electronegativity)     ← matminer compute otomatis              ║
+║  • element.atomic_radius             ← matminer compute otomatis              ║
+║  • element.group                     ← matminer compute otomatis              ║
+║  • element.valence                   ← matminer compute otomatis              ║
+║  • Semua 150+ composition features   ← matminer sudah optimized               ║
+║                                                                                ║
+║  Alasan: JAUH lebih cepat & lebih akurat dengan matminer!                      ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
